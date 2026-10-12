@@ -16,49 +16,123 @@ jobs:
       contents: read
 
     steps:
+      # ---------------------------------------------------
+      # 1. Checkout project
+      # ---------------------------------------------------
       - name: Checkout source
         uses: actions/checkout@v6
 
+      # ---------------------------------------------------
+      # 2. Java 17
+      # ---------------------------------------------------
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
+      # ---------------------------------------------------
+      # 3. Install Android command-line tools only
+      # ---------------------------------------------------
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: "platform-tools platforms;android-37 build-tools;36.0.0"
+          packages: "platform-tools"
 
+      # ---------------------------------------------------
+      # 4. Show available Android 37 packages
+      # ---------------------------------------------------
+      - name: Check Android SDK packages
+        run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          sdkmanager --list | grep -E "platforms;android-37|build-tools;3[67]" || true
+
+      # ---------------------------------------------------
+      # 5. Install Android 17 / API 37
+      # IMPORTANT: package is android-37.0
+      # ---------------------------------------------------
+      - name: Install Android 17 SDK
+        run: |
+          sdkmanager \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      # ---------------------------------------------------
+      # 6. Compatibility alias
+      #
+      # Some Gradle/AGP configurations request android-37
+      # while sdkmanager installs android-37.0.
+      # ---------------------------------------------------
+      - name: Create Android 37 compatibility alias
+        run: |
+          echo "Installed platforms:"
+          ls -la "$ANDROID_SDK_ROOT/platforms"
+
+          if [ -d "$ANDROID_SDK_ROOT/platforms/android-37.0" ] && \
+             [ ! -e "$ANDROID_SDK_ROOT/platforms/android-37" ]; then
+
+            echo "Creating android-37 -> android-37.0 compatibility link"
+
+            ln -s \
+              "$ANDROID_SDK_ROOT/platforms/android-37.0" \
+              "$ANDROID_SDK_ROOT/platforms/android-37"
+          fi
+
+          echo "Final platforms:"
+          ls -la "$ANDROID_SDK_ROOT/platforms"
+
+      # ---------------------------------------------------
+      # 7. Verify Android environment
+      # ---------------------------------------------------
       - name: Show Android environment
         run: |
-          echo "JAVA:"
+          echo "Java:"
           java -version
 
-          echo "ANDROID SDK:"
+          echo ""
+          echo "Android SDK:"
           echo "$ANDROID_SDK_ROOT"
 
-          echo "INSTALLED SDK PACKAGES:"
+          echo ""
+          echo "Installed packages:"
           sdkmanager --list_installed
 
+      # ---------------------------------------------------
+      # 8. Gradle
+      # ---------------------------------------------------
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
 
-      - name: Show Gradle
+      - name: Show Gradle version
         run: |
           gradle --version
 
+      # ---------------------------------------------------
+      # 9. Build application
+      # ---------------------------------------------------
       - name: Build debug APK
         run: |
-          gradle --no-daemon --stacktrace :app:assembleDebug
+          gradle \
+            --no-daemon \
+            --stacktrace \
+            :app:assembleDebug
 
+      # ---------------------------------------------------
+      # 10. Locate APK
+      # ---------------------------------------------------
       - name: Locate generated APK
         run: |
           echo "Generated APK files:"
-          find app/build/outputs/apk -type f -name "*.apk" -print
+          find app/build/outputs/apk \
+            -type f \
+            -name "*.apk" \
+            -print
 
+      # ---------------------------------------------------
+      # 11. Upload APK
+      # ---------------------------------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

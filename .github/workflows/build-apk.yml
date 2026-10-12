@@ -6,58 +6,53 @@ on:
   push:
     branches:
       - main
-      - master
 
 jobs:
   build:
     name: Build Umniah Network Insights
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
 
     steps:
-      # 1. Download repository source code
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      # 2. Java required by Android/Gradle
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3. Android SDK command-line environment
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      # 4. Install Android API 37
-      - name: Install Android SDK 37
+      - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-37"
-          sdkmanager "build-tools;37.0.0"
+          sdkmanager "build-tools;36.0.0"
 
-      # 5. This project currently does not include Gradle Wrapper,
-      #    so install Gradle explicitly.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.6.1"
+          gradle-version: "9.6.0"
 
-      # 6. Build the installable DEBUG APK
+      - name: Show environment
+        run: |
+          java -version
+          gradle --version
+          sdkmanager --list_installed
+
       - name: Build debug APK
         run: |
           gradle --no-daemon --stacktrace :app:assembleDebug
 
-      # 7. Show generated APK
-      - name: Find generated APK
+      - name: Locate generated APK
         run: |
           find app/build/outputs/apk -type f -name "*.apk" -print
 
-      # 8. Make the APK downloadable from GitHub Actions
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

@@ -27,23 +27,28 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools platforms;android-37 build-tools;36.0.0"
 
-      - name: Install Android SDK packages
+      - name: Show Android environment
         run: |
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-37"
-          sdkmanager "build-tools;36.0.0"
+          echo "JAVA:"
+          java -version
+
+          echo "ANDROID SDK:"
+          echo "$ANDROID_SDK_ROOT"
+
+          echo "INSTALLED SDK PACKAGES:"
+          sdkmanager --list_installed
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
 
-      - name: Show environment
+      - name: Show Gradle
         run: |
-          java -version
           gradle --version
-          sdkmanager --list_installed
 
       - name: Build debug APK
         run: |
@@ -51,6 +56,7 @@ jobs:
 
       - name: Locate generated APK
         run: |
+          echo "Generated APK files:"
           find app/build/outputs/apk -type f -name "*.apk" -print
 
       - name: Upload APK
